@@ -25,7 +25,7 @@ func (ns *NodeService) StartHeartbeats() {
 					}
 					resp, err := client.Get(url)
 					if err != nil || resp.StatusCode != http.StatusOK {
-						fmt.Printf("❌ Peer %s failed heartbeat. Removing.\n", peer)
+						fmt.Printf("Peer %s failed heartbeat. Removing.\n", peer)
 						ns.RemovePeer(peer)
 						return
 					}

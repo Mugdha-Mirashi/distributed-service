@@ -26,6 +26,7 @@ func NewNodeService(selfID string, initialPeers []string) *NodeService {
 	}
 
 	now := time.Now()
+	fmt.Println("Initial peers: ", initialPeers)
 	for _, peer := range initialPeers {
 		if peer != selfID {
 			ns.Peers[peer] = now
@@ -69,8 +70,6 @@ func (ns *NodeService) UpdatePeerTimestamp(peer string) {
 	ns.Peers[peer] = time.Now()
 }
 
-
-
 // PropagateIncrement sends an increment message to all known peers
 func (ns *NodeService) PropagateIncrement(id string) {
 	message := models.IncrementMessage{
@@ -85,12 +84,14 @@ func (ns *NodeService) PropagateIncrement(id string) {
 	peers := ns.GetPeers()
 	ns.Mutex.RUnlock()
 
+	fmt.Printf("Propagating increment to %d peers\n", len(peers))
+
 	for _, peer := range peers {
 		go func(peer string) {
 			url := fmt.Sprintf("http://%s/propagate", peer)
 			resp, err := http.Post(url, "application/json", bytes.NewReader(body))
 			if err != nil {
-				fmt.Printf("❌ Failed to propagate increment to %s: %v\n", peer, err)
+				fmt.Printf("Failed to propagate increment to %s: %v\n", peer, err)
 				return
 			}
 			defer resp.Body.Close()

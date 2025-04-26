@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,8 +14,7 @@ import (
 // adding instance of node in the handler struct
 
 type Controller struct {
-	ns      *node.NodeService
-	counter *node.Counter
+	ns *node.NodeService
 }
 
 func NewController(ns *node.NodeService) *Controller {
@@ -40,7 +40,11 @@ func (handler *Controller) HandleJoin(c *gin.Context) {
 		Peers: peerList,
 	})
 
-	go handler.ns.SyncPeersFrom(request.Sender)
+        // Sync with the new peer asynchronously
+    go handler.ns.SyncPeersFrom(request.Sender)
+        
+	// Notify other peers about the new peer asynchronously
+	go handler.ns.NotifyAllPeersAboutNewPeer(request.Sender)
 
 }
 
@@ -55,6 +59,8 @@ func (handler *Controller) HandleIncrement(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("Increment applied from peer: %s\n", id, handler.ns.Counter.Value)
+
 	// If applied, propagate to peers
 	go handler.ns.PropagateIncrement(id)
 
@@ -63,6 +69,25 @@ func (handler *Controller) HandleIncrement(c *gin.Context) {
 
 // HandleGetCount handles GET /count
 func (handler *Controller) HandleGetCount(c *gin.Context) {
-	count := handler.counter.Get()
+	count := handler.ns.Counter.Get()
 	c.JSON(http.StatusOK, gin.H{"count": count})
+}
+
+func (handler *Controller) HandlePropagateIncrement(c *gin.Context) {
+	var req struct {
+		ID string `json:"id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	applied := handler.ns.Counter.Increment(req.ID)
+	if applied {
+		fmt.Printf("Increment applied from peer: %s\n", req.ID)
+	} else {
+		fmt.Printf("Duplicate increment received from peer: %s\n", req.ID)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }

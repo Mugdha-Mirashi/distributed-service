@@ -40,3 +40,5 @@ func (c *Counter) Get() int {
 	defer c.Mutex.Unlock()
 	return c.Value
 }
+
+
